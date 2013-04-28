@@ -69,7 +69,7 @@ class TestDB(unittest.TestCase):
         for file_name in ['75F2D01D-4EE1-11D7-AE75-006008577F08',
                           '75302AFA-9423-469E-8432-592DB4A4243F']:
             data = json.load(
-                open('tests/fixtures/votation-{}.json'.format(file_name)))
+                open('tests/fixtures/votation-{0}.json'.format(file_name)))
             if 'votering' in data: data = data['votering']['dokvotering']
             db.add_votes(data, self.session)
 

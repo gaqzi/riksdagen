@@ -45,19 +45,19 @@ if not args.convert:
     votation_ids = get_votation_ids(YEAR)
     bar = ProgressBar(
         widgets=['Downloading: ', Counter(),
-                 ' / {} '.format(len(votation_ids)),
+                 ' / {0} '.format(len(votation_ids)),
                  ETA(), ' ', Timer()],
         maxval=len(votation_ids)
     ).start()
     for i, votation_id in enumerate(votation_ids):
         votation = get_votation(votation_id)
-        with open('{}/{}.json'.format(PATH, votation_id), 'w+') as f:
+        with open('{0}/{1}.json'.format(PATH, votation_id), 'w+') as f:
             json.dump(votation, f)
         bar.update(i)
 else:
     files = os.listdir(PATH)
     bar = ProgressBar(
-        widgets=['Processed: ', Counter(), ' / {} '.format(len(files)),
+        widgets=['Processed: ', Counter(), ' / {0} '.format(len(files)),
                  ETA(), ' ', Timer()],
         maxval=len(files)
     ).start()
@@ -67,6 +67,6 @@ else:
     session = db.Session()
     db.Base.metadata.create_all(engine)
     for i, file_name in enumerate(files):
-        with open('{}/{}'.format(PATH, file_name)) as f:
+        with open('{0}/{1}'.format(PATH, file_name)) as f:
             db.add_votes(json.load(f), session)
         bar.update(i)

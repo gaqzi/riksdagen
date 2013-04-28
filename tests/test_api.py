@@ -41,7 +41,7 @@ class TestGetVotationIds(unittest.TestCase):
             get_votation_ids(year=2003)
 
         mock.assert_called_with(
-            '{}/voteringlista/'.format(API_URL),
+            '{0}/voteringlista/'.format(API_URL),
             params={'sz': 10000, 'utformat': 'iddump', 'rm': '2003/04'}
         )
 
@@ -71,12 +71,12 @@ class TestGetVotation(unittest.TestCase):
         )
         with patch('requests.get', mock):
             get_votation(self.votation_id)
-        mock.assert_called_with('{}/votering/{}/json'.format(API_URL,
-                                                             self.votation_id))
+        mock.assert_called_with(
+            '{0}/votering/{1}/json'.format(API_URL, self.votation_id))
 
     def test_get_data_parse(self):
         mock = MagicMock(return_value=RequestsResponse(
-            json.load(open('tests/fixtures/votation-{}.json'.format(
+            json.load(open('tests/fixtures/votation-{0}.json'.format(
                 self.votation_id)))
         ))
         with patch('requests.get', mock):
