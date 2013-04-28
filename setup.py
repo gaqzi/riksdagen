@@ -9,6 +9,7 @@ setup(
     author_email='ba@sanitarium.se',
     url='https://github.com/gaqzi/riksdagen/',
     license='BSD',
+    scripts=['bin/riksdagen'],
     packages=['riksdagen'],
     install_requires=[
         'SQLAlchemy==0.8.1',
