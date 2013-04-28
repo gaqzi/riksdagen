@@ -17,6 +17,7 @@ parser.add_argument('year',
                     help='The year a Riksmöte is started')
 parser.add_argument(
     '--db-connection',
+    default='sqlite:///riksdagen.sqlite3',
     help='A DB connection string that SQLAlchemy will understand'
 )
 parser.add_argument('-s', '--save-path',
@@ -29,9 +30,10 @@ args = parser.parse_args()
 SAVE_PATH = args.save_path if args.save_path else '.'
 YEAR = args.year
 PATH = os.path.join(SAVE_PATH, YEAR)
-CONNECTION_STRING = 'sqlite:///riksdagen.sqlite3'
-if args.db_connection:
-    CONNECTION_STRING = args.db_connection
+CONNECTION_STRING = args.db_connection
+
+print args
+sys.exit(0)
 
 def mkdir_p(path):
     try:
