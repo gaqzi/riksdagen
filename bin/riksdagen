@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+import argparse
+import json
+import os, errno
+import sys
+
+from progressbar import ProgressBar, Counter, Timer, ETA
+from riksdagen import db
+from riksdagen.api import get_votation_ids, get_votation
+from sqlalchemy import create_engine
+import requests
+
+parser = argparse.ArgumentParser(description='Fetch votation data from Riksdagen')
+parser.add_argument('year',
+                    help='The year a Riksmöte is started')
+parser.add_argument(
+    '--db-connection',
+    help='A DB connection string that SQLAlchemy will understand'
+)
+parser.add_argument('-s', '--save-path',
+                    help='Path to store downloaded data files')
+parser.add_argument('-c', '--convert',
+                    action='store_true',
+                    help='Convert years json files to the database')
+args = parser.parse_args()
+
+SAVE_PATH = args.save_path if args.save_path else '.'
+YEAR = args.year
+PATH = os.path.join(SAVE_PATH, YEAR)
+CONNECTION_STRING = 'mysql://root@localhost/riksdagen?charset=utf8'
+if args.db_connection:
+    CONNECTION_STRING = args.db_connection
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else: raise
+mkdir_p(PATH)
+
+if not args.convert:
+    votation_ids = get_votation_ids(YEAR)
+    bar = ProgressBar(
+        widgets=['Downloading: ', Counter(),
+                 ' / {} '.format(len(votation_ids)),
+                 ETA(), ' ', Timer()],
+        maxval=len(votation_ids)
+    ).start()
+    for i, votation_id in enumerate(votation_ids):
+        votation = get_votation(votation_id)
+        with open('{}/{}.json'.format(PATH, votation_id), 'w+') as f:
+            json.dump(votation, f)
+        bar.update(i)
+else:
+    files = os.listdir(PATH)
+    bar = ProgressBar(
+        widgets=['Processed: ', Counter(), ' / {} '.format(len(files)),
+                 ETA(), ' ', Timer()],
+        maxval=len(files)
+    ).start()
+
+    engine = create_engine(CONNECTION_STRING)
+    db.Session.configure(bind=engine)
+    session = db.Session()
+    db.Base.metadata.create_all(engine)
+    for i, file_name in enumerate(files):
+        with open('{}/{}'.format(PATH, file_name)) as f:
+            db.add_votes(json.load(f), session)
+        bar.update(i)
