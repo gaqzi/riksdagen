@@ -66,16 +66,19 @@ class TestDB(unittest.TestCase):
             )
 
     def test_add_mass_votes(self):
-        data = json.load(open('tests/fixtures/votation-75F2D01D-4EE1-11D7-'
-                              'AE75-006008577F08.json'))
-        db.add_votes(data['votering']['dokvotering'], self.session)
+        for file_name in ['75F2D01D-4EE1-11D7-AE75-006008577F08',
+                          '75302AFA-9423-469E-8432-592DB4A4243F']:
+            data = json.load(
+                open('tests/fixtures/votation-{}.json'.format(file_name)))
+            if 'votering' in data: data = data['votering']['dokvotering']
+            db.add_votes(data, self.session)
 
         self.longMessage = True
         session = self.session
-        for model, expected in [(db.WorkingYear, 1),
+        for model, expected in [(db.WorkingYear, 2),
                                 (db.Constituency, 29),
-                                (db.Person, 349),
-                                (db.Votation, 1),
-                                (db.Vote, 349)]:
+                                (db.Person, 360),
+                                (db.Votation, 2),
+                                (db.Vote, 698)]:
             self.assertEqual(session.query(model).filter().count(), expected,
                              model)

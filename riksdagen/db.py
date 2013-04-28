@@ -89,7 +89,7 @@ class Vote(Base):
 
 def add_votes(data, session):
     ModelMapping = namedtuple('ModelMapping', 'name key model')
-    record_exists = defaultdict(lambda: [])
+    record_exists = defaultdict(lambda: set())
     models = [
         ModelMapping('working_year', 'rm', WorkingYear),
         ModelMapping('constituency', 'valkretsnummer', Constituency),
@@ -100,8 +100,8 @@ def add_votes(data, session):
         for model in models:
             if not row[model.key] in record_exists[model.name]:
                 session.merge(model.model.from_vote_json(row))
-                if not model.name == 'vote':
-                    record_exists['working_year']
+                record_exists[model.name].add(row[model.key])
+
         session.merge(Vote.from_vote_json(row))
         if (i % 100) == 0: session.commit()
     session.commit()
