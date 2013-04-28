@@ -106,16 +106,27 @@ class Vote(Base):
                    source=data['källa'])
 
 
-def add_votes(data, session):
+def add_votes(votes, session, record_exists=defaultdict(set)):
+    ''' Records votes to the database creating all pre-requisite values.
+
+    Arguments:
+      votes: A list of dict objects that corresponds to the API JSON format
+      session: The SQL Alchemy session object
+      record_exists: The cache object used to see if the database needs to be
+                     queried. Default: defaultdict(set).
+                     This object persists between runs if left at default.
+
+    Returns:
+      None
+    '''
     ModelMapping = namedtuple('ModelMapping', 'name key model')
-    record_exists = defaultdict(lambda: set())
     models = [
         ModelMapping('working_year', 'rm', WorkingYear),
         ModelMapping('constituency', 'valkretsnummer', Constituency),
         ModelMapping('person', 'intressent_id', Person),
         ModelMapping('votation', 'votering_id', Votation),
     ]
-    for i, row in enumerate(data):
+    for i, row in enumerate(votes):
         for model in models:
             if not row[model.key] in record_exists[model.name]:
                 session.merge(model.model.from_vote_json(row))
@@ -123,4 +134,5 @@ def add_votes(data, session):
 
         session.merge(Vote.from_vote_json(row))
         if (i % 100) == 0: session.commit()
+
     session.commit()

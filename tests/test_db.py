@@ -1,5 +1,6 @@
 # encoding: utf-8
 from __future__ import unicode_literals
+from collections import defaultdict
 import json
 import unittest
 
@@ -58,7 +59,7 @@ class TestDB(unittest.TestCase):
         self.session.add(db.Person.from_vote_json(self.vote_data))
 
     def test_add_vote(self):
-        db.add_votes([self.vote_data], self.session)
+        db.add_votes([self.vote_data], self.session, defaultdict(set))
         for model in [db.WorkingYear, db.Constituency, db.Person,
                       db.Votation, db.Vote]:
             self.assertEqual(
@@ -84,7 +85,7 @@ class TestDB(unittest.TestCase):
                              model)
 
     def test_vote_relationships_work(self):
-        db.add_votes([self.vote_data], self.session)
+        db.add_votes([self.vote_data], self.session, defaultdict(set))
         vote = (self.session.query(db.Vote)
                 .filter(db.Vote.person_id == '0584386800218').first())
 
