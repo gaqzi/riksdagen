@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(
-    name='riksdagen-voteringsdatabas',
+    name='riksdagen',
     version='0.1',
     description='Fetch votations and votes from Riksdagens API',
     author=u'Björn Andersson',

@@ -2,3 +2,8 @@
 *.pyc
 .autonose*
 *.#*
+*.7z
+*.sqlite3
+
+build
+dist
