@@ -96,11 +96,12 @@ def add_votes(data, session):
         ModelMapping('person', 'intressent_id', Person),
         ModelMapping('votation', 'votering_id', Votation),
     ]
-    for row in data:
+    for i, row in enumerate(data):
         for model in models:
             if not row[model.key] in record_exists[model.name]:
                 session.merge(model.model.from_vote_json(row))
                 if not model.name == 'vote':
                     record_exists['working_year']
         session.merge(Vote.from_vote_json(row))
-        session.commit()
+        if (i % 100) == 0: session.commit()
+    session.commit()

@@ -32,9 +32,6 @@ YEAR = args.year
 PATH = os.path.join(SAVE_PATH, YEAR)
 CONNECTION_STRING = args.db_connection
 
-print args
-sys.exit(0)
-
 def mkdir_p(path):
     try:
         os.makedirs(path)
