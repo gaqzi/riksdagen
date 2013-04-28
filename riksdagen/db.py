@@ -4,7 +4,7 @@ from collections import defaultdict, namedtuple
 
 from sqlalchemy import Column, Unicode, ForeignKey, Integer
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship, backref
 
 Base = declarative_base()
 Session = sessionmaker()
@@ -13,6 +13,8 @@ Session = sessionmaker()
 class WorkingYear(Base):
     __tablename__ = 'working_years'
     id = Column(Unicode(7), primary_key=True)
+
+    votations = relationship('Votation', lazy='dynamic')
 
     @classmethod
     def from_vote_json(cls, data):
@@ -40,6 +42,12 @@ class Person(Base):
     gender = Column(Unicode(6), default='Okänd')
     year_born = Column(Integer)
 
+    votes = relationship('Vote', lazy='dynamic')
+
+    @property
+    def name(self):
+        return '{0}  {1}'.format(self.first_name, self.last_name)
+
     @classmethod
     def from_vote_json(cls, data):
         return cls(id=data['intressent_id'],
@@ -52,14 +60,18 @@ class Person(Base):
 class Votation(Base):
     __tablename__ = 'votations'
     id = Column(Unicode(36), primary_key=True)
+    working_year_id = Column(Unicode(7), ForeignKey('working_years.id'))
     name = Column(Unicode(10))
     set_number = Column(Integer)
     votation = Column(Unicode(100))
     pertains_to = Column(Unicode(100))
 
+    working_year = relationship(WorkingYear)
+
     @classmethod
     def from_vote_json(cls, data):
         return cls(id=data['votering_id'],
+                   working_year_id=data['rm'],
                    name=data['beteckning'],
                    set_number=data['punkt'],
                    votation=data['votering'],
@@ -73,15 +85,22 @@ class Vote(Base):
     person_id = Column(Unicode(32), ForeignKey('people.id'),
                        primary_key=True)
     constituency_id = Column(Integer, ForeignKey('constituencies.id'))
+    seating_position = Column(Integer, nullable=False)
     vote = Column(Unicode(11), nullable=False)
     party = Column(Unicode(3), nullable=False)
     source = Column(Unicode(20), nullable=False)
+
+    votation = relationship(
+        Votation, backref=backref('votes', order_by=person_id))
+    person = relationship(Person)
+    constituency = relationship(Constituency, backref=backref('votes'))
 
     @classmethod
     def from_vote_json(cls, data):
         return cls(votation_id=data['votering_id'],
                    person_id=data['intressent_id'],
                    constituency_id=data['valkretsnummer'],
+                   seating_position=data['banknummer'],
                    vote=data['rost'],
                    party=data['parti'],
                    source=data['källa'])

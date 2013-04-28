@@ -82,3 +82,12 @@ class TestDB(unittest.TestCase):
                                 (db.Vote, 698)]:
             self.assertEqual(session.query(model).filter().count(), expected,
                              model)
+
+    def test_vote_relationships_work(self):
+        db.add_votes([self.vote_data], self.session)
+        vote = (self.session.query(db.Vote)
+                .filter(db.Vote.person_id == '0584386800218').first())
+
+        self.assertEqual(vote.person.first_name, 'Gunnar')
+        self.assertEqual(vote.votation.name, 'UBU7')
+        self.assertEqual(vote.constituency.name, 'Stockholms kommun')

@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+# encoding: utf-8
+from __future__ import unicode_literals
+import argparse
+import csv
+
+from riksdagen import db
+from riksdagen.api import votation_year
+from sqlalchemy import create_engine
+
+parser = argparse.ArgumentParser(
+    description="Convert a Riksmöte's votations into a CSV file.")
+parser.add_argument('year', help='The year a Riksmöte is started')
+parser.add_argument(
+    '--db-connection',
+    default='sqlite:///riksdagen.sqlite3',
+    help='A DB connection string that SQLAlchemy will understand')
+args = parser.parse_args()
+
+engine = create_engine(args.db_connection)
+db.Session.configure(bind=engine)
+session = db.Session()
+
+votations = {}
+year = session.query(db.WorkingYear).get(votation_year(args.year))
+if not year:
+    print 'No data for {}'.format(args.year)
+    exit(1)
+
+for votation in year.votations:
+    votations[votation.id.encode('utf-8')] = '{0}-{1}'.format(
+        votation.name,
+        votation.set_number).encode('utf-8')
+
+file = open('output-{0}.csv'.format(args.year), 'w+')
+outfile = csv.DictWriter(file,
+                         [u'Namn', u'Parti'] + sorted(votations.values()))
+outfile.writeheader()
+
+votation_ids = votations.keys()
+for person in session.query(db.Person).order_by(db.Person.last_name,
+                                                db.Person.first_name):
+    votation_data = {u'Namn': person.name.encode('utf-8')}
+    for vote in person.votes:
+        votation_id = vote.votation_id.encode('utf-8')
+        if votation_id in votation_ids:
+            votation_data[votations[votation_id]] = vote.vote.encode('utf-8')
+            votation_data[u'Parti'] = vote.party.encode('utf-8')
+
+    outfile.writerow(votation_data)
+file.close()
