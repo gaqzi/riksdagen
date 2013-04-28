@@ -29,7 +29,7 @@ args = parser.parse_args()
 SAVE_PATH = args.save_path if args.save_path else '.'
 YEAR = args.year
 PATH = os.path.join(SAVE_PATH, YEAR)
-CONNECTION_STRING = 'mysql://root@localhost/riksdagen?charset=utf8'
+CONNECTION_STRING = 'sqlite:///riksdagen.sqlite3'
 if args.db_connection:
     CONNECTION_STRING = args.db_connection
 
