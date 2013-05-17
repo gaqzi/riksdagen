@@ -1,0 +1,231 @@
+#!/usr/bin/env ruby
+#encoding: utf-8
+
+require 'find'
+require 'json'
+require 'pp'
+
+# I have used intressent_id to select for which pms to print debugging info.
+# So the fragments of debugging code left in below do pass intressent_id as
+# the "which" argument for debug.
+#DebugThese = [] # %w/0467253407311 0787533297400/
+#def debug(which)
+#  DebugThese.include? which
+#end
+
+base = ARGV.shift || Dir.pwd
+outfile = ARGV.shift || "output.csv"
+
+outfile_contents = if File.exists? outfile
+                     File.read(outfile)
+                   else
+                     ''
+                   end
+FirstHeaders = %w{intressent_id namn valkrets parti}
+VoteHeaders = if outfile_contents.empty?
+                FirstHeaders.dup
+              else
+                outfile_contents.lines.first.chomp.split(",")
+              end
+
+RawData = if outfile_contents.empty?
+            []
+          else
+            tmp = outfile_contents.lines
+            tmp.shift # drop headers
+            tmp.map do |line|
+              line.chomp!
+              line.split /,/
+            end
+          end
+
+RawData.each do |row|
+  FirstHeaders.size.upto(row.size - 1) do |i|
+    row[i] = row[i].to_i
+  end
+end
+
+def cmp_extract_data(header)
+  s = header.split('-')
+  year, month = s[0].split("/")
+  bet_alpha, bet_num = s[1].scan(/(\D+)(\d+)/).first
+  {
+    year:      year.to_i,
+    month:     month.to_i,
+    bet_alpha: bet_alpha,
+    bet_num:   bet_num.to_i,
+    punkt:     s[2].to_i,
+    avser:     s[3]
+  }
+end
+
+def cmp_headers(a, b)
+  ah = cmp_extract_data(a)
+  bh = cmp_extract_data(b)
+  [:year, :month, :bet_alpha, :bet_num, :punkt, :avser].each do |key|
+    cmp = (ah[key] <=> bh[key])
+    return cmp unless cmp == 0
+  end
+  return 0
+end
+
+def partition_votes(votes)
+  return nil if votes.empty?
+  ref = make_header(votes.first)
+  first, rest = votes.partition {|v| make_header(v) == ref}
+  return [first, *partition_votes(rest)].compact
+end
+
+VoteMap = {
+  'Ja' => 1,
+  'Nej' => 4,
+  'Avstår' => 7,
+  'Frånvarande' => 8,
+}
+
+class << VoteHeaders
+  def insert_sorted(new_value)
+    return nil if include? new_value
+    if length == FirstHeaders.length
+      i = length
+      push new_value
+    else
+      i = find_index do |header|
+        if FirstHeaders.include? header
+          false
+        else
+          cmp_headers(header, new_value) > 0
+        end
+      end
+      i ||= length
+      insert(i, new_value)
+    end
+    return i
+  end
+end
+
+class << RawData
+  def check
+    each_with_index do |row, index|
+      if row.length != VoteHeaders.length
+        lower_limit = index - 2 < 0 ? 0 : index - 2
+        upper_limit = index + 2 > length - 1 ? length - 1 : index + 2
+        pp self[lower_limit..upper_limit]
+        raise "Wrong length of row #{index} (#{self[index][1]}): #{row.length} (expected #{VoteHeaders.length})"
+      end
+    end
+  end
+  def even_out(changed, columns)
+    #puts "even_out(#{changed.inspect}, #{columns.sort})"
+    each_index do |index|
+      #debug_this = debug(self[index][0])
+      columns.sort.each do |column|
+        if changed.include? index and changed[index].include? column
+          #puts "#{self[index][1]} changed at column #{column}, skipping" if debug_this
+          next
+        end
+      
+        #puts "Inserting zero at columns #{columns.sort.inspect} for #{self[index][1]}" if debug_this
+        self[index].insert column, 0
+      end
+    end
+  end
+end
+
+def make_header(datum)
+  datum.values_at('rm', 'beteckning', 'punkt', 'avser').join("-")
+end
+
+Find.find(base) do |entry|
+  next unless entry.match(/\.json$/i)
+  vote = JSON(File.read(entry))
+  vote_parts = partition_votes(vote)
+  if RawData.empty?
+    # We are at the first vote
+    vote_parts.each do |part|
+      # First, add columns for this vote
+      next unless VoteHeaders.insert_sorted(make_header(part.first))
+      part.each do |pm_data|
+        RawData << pm_data.values_at('intressent_id', 'namn', 'valkrets')
+        RawData[-1] << pm_data['parti'].upcase
+        RawData[-1] << VoteMap[pm_data['rost']]
+        #if debug(RawData[-1][0])
+        #  puts "#{pm_data['namn']} found at first vote: data:"
+        #  pp RawData[-1]
+        #end
+      end
+    end
+  else
+    # We have a new vote.
+    vote_parts.each do |part|
+      # First, add columns for this vote
+      next unless VoteHeaders.insert_sorted(make_header(part.first))
+      changed = Hash.new {[]}
+      even_out_columns = []
+      part.each do |new_pm_data|
+        #if debug(new_pm_data['intressent_id'])
+        #  puts "Handling new data for #{new_pm_data['namn']}"
+        #  pp new_pm_data
+        #end
+        index = RawData.find_index do |existing_pm_data|
+          existing_pm_data[0] == new_pm_data['intressent_id']
+        end
+        this_header = make_header(new_pm_data)
+        column_number = VoteHeaders.index(this_header)
+        even_out_columns |= [column_number]
+        if index
+          RawData[index].insert(column_number, VoteMap[new_pm_data['rost']])
+          changed[index] |= [column_number]
+          # find the newest vote of this pm
+          newest = nil
+          RawData[index].each_with_index do |value, vi|
+            newest = vi if value.is_a?(Integer) && value > 0
+          end
+          #if debug(RawData[index][0])
+          #  puts "current: #{column_number}, newest: #{newest}"
+          #  p RawData[index]
+          #end
+          if column_number == newest
+            RawData[index][1] = new_pm_data['namn']
+            RawData[index][2] = new_pm_data['valkrets']
+            RawData[index][3] = new_pm_data['parti'].upcase
+          end
+          #if debug(RawData[index][0])
+          #  p RawData[index]
+          #end
+        else # this pm is new
+          new_data_item = new_pm_data.values_at('intressent_id', 'namn', 'valkrets')
+          new_data_item << new_pm_data['parti'].upcase
+          # this operation may introduce nil values in new_data_item...
+          new_data_item[column_number] = VoteMap[new_pm_data['rost']]
+          last_index = VoteHeaders.size - 1
+          if column_number < last_index
+            # this may also introduce nil values...
+            new_data_item[last_index] = 0
+          end
+          # ...so replace nil values with zeroes
+          new_data_item.each_with_index {|e, i| new_data_item[i] = 0 if e.nil?}
+          RawData << new_data_item
+          changed[RawData.length - 1] |= [column_number]
+          #if debug(new_data_item[0])
+          #  puts "new item"
+          #  pp new_data_item
+          #end
+        end
+      end
+      # ok, we're done with this vote - make RawData consistent (by adding
+      # zeroes for those who "have gone")
+      RawData.even_out(changed, even_out_columns)
+    end
+  end
+  puts entry
+  #pp RawData[-3..-1]
+  RawData.check
+end
+
+File.open(outfile, 'w') do |f|
+  f.puts VoteHeaders.join(",")
+  RawData.each do |pm_data|
+    f.puts pm_data.join(",").squeeze
+  end
+end
