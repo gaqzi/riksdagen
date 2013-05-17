@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='riksdagen',
-    version='0.1',
+    version='0.1.1',
     description='Fetch votations and votes from Riksdagens API',
     author=u'Björn Andersson',
     author_email='ba@sanitarium.se',

@@ -50,9 +50,17 @@ if not args.convert:
         maxval=len(votation_ids)
     ).start()
     for i, votation_id in enumerate(votation_ids):
-        votation = get_votation(votation_id)
-        with open('{0}/{1}.json'.format(PATH, votation_id), 'w+') as f:
-            json.dump(votation, f)
+        file_name = os.path.join(PATH, '{0}.json'.format(votation_id))
+        download = False
+        try:
+            download = not bool(os.path.getsize(file_name))
+        except os.error:
+            download = True
+
+        if download:
+            votation = get_votation(votation_id)
+            with open(file_name, 'w+') as f:
+                json.dump(votation, f)
         bar.update(i)
 else:
     files = os.listdir(PATH)
