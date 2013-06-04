@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import json
 import unittest
 
+from testfixtures import LogCapture
 from mock import MagicMock, patch
 
 from riksdagen.api import (
@@ -17,7 +18,7 @@ class RequestsResponse(object):
     @property
     def text(self): return self.data
 
-    def json(self): return self.data
+    def json(self): return json.loads(self.data)
 
 
 class TestYearString(unittest.TestCase):
@@ -67,7 +68,7 @@ class TestGetVotation(unittest.TestCase):
 
     def test_get_data_request_uri(self):
         mock = MagicMock(return_value=RequestsResponse(
-            {'votering': {'dokvotering': []}})
+            '{"votering": {"dokvotering": []}}')
         )
         with patch('requests.get', mock):
             get_votation(self.votation_id)
@@ -76,8 +77,9 @@ class TestGetVotation(unittest.TestCase):
 
     def test_get_data_parse(self):
         mock = MagicMock(return_value=RequestsResponse(
-            json.load(open('tests/fixtures/votation-{0}.json'.format(
-                self.votation_id)))
+            open('tests/fixtures/votation-{0}.json'.format(
+                self.votation_id
+            )).read()
         ))
         with patch('requests.get', mock):
             data = get_votation(self.votation_id)
@@ -85,3 +87,16 @@ class TestGetVotation(unittest.TestCase):
         first_voter = data[0]
         self.assertEqual(first_voter['beteckning'], 'UBU7')
         self.assertEqual(first_voter['namn'], 'Gunnar  Hökmark')
+
+    def test_invalid_json_document_returned(self):
+        '''Shouldn't raise errors, log a message saying what went wrong'''
+        mock = MagicMock(return_value=RequestsResponse(''))
+        with LogCapture() as l:
+            with patch('requests.get', mock):
+                get_votation(self.votation_id)
+
+            l.check(
+                ('riksdagen', 'ERROR',
+                 'Invalid JSON document for votation '
+                 '"75F2D01D-4EE1-11D7-AE75-006008577F08".')
+            )

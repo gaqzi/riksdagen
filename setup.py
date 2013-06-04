@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='riksdagen',
-    version='0.1.1',
+    version='0.1.2',
     description='Fetch votations and votes from Riksdagens API',
     author=u'Björn Andersson',
     author_email='ba@sanitarium.se',
@@ -13,9 +13,13 @@ setup(
     packages=['riksdagen'],
     install_requires=[
         'SQLAlchemy==0.8.1',
-        'requests==1.2.0',
+        'requests>=1.2.0',
         'progressbar==2.3',
     ],
     test_suite='nose.collector',
-    tests_require=['nose>=1.3.0'],
+    tests_require=[
+        'nose>=1.3.0',
+        'mock==1.0.1',
+        'testfixtures==3.0.0'
+    ],
 )

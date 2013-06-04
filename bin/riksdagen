@@ -59,8 +59,9 @@ if not args.convert:
 
         if download:
             votation = get_votation(votation_id)
-            with open(file_name, 'w+') as f:
-                json.dump(votation, f)
+            if votation:
+                with open(file_name, 'w+') as f:
+                    json.dump(votation, f)
         bar.update(i)
 else:
     files = os.listdir(PATH)

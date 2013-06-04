@@ -1,8 +1,12 @@
 # encoding: utf-8
 from __future__ import unicode_literals
+
+import logging
+
 import requests
 
 API_URL = 'http://data.riksdagen.se'
+logger = logging.getLogger('riksdagen')
 
 
 # URI parameters from http://data.riksdagen.se/voteringlista/
@@ -72,4 +76,10 @@ def get_votation(id):
     '''
     r = requests.get('{0}/votering/{1}/json'.format(API_URL, id))
 
-    return r.json()['votering']['dokvotering']
+    try:
+        data = r.json()
+    except ValueError:
+        logger.exception('Invalid JSON document for votation "%s".', id)
+        return None
+    else:
+        return data['votering']['dokvotering']
